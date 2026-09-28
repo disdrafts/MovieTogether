@@ -6,4 +6,8 @@
     </style>
 
     <style name="Theme.MovieTogether" parent="Base.Theme.MovieTogether" />
+    <style name="ThemeOverlay.MovieTogether.SearchView" parent="Widget.AppCompat.SearchView">
+        <item name="android:editTextColor">@color/text_primary</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
+    </style>
 </resources>

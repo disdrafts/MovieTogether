@@ -2,4 +2,20 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="background_dark">#FF0F0F0F</color>
+    <color name="surface_dark">#FF1A1A1A</color>
+    <color name="card_dark">#FF1A1A1A</color>
+    <color name="poster_placeholder">#FF2A2A2A</color>
+
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#FFB3B3B3</color>
+    <color name="accent">#FFFFC107</color>
+    <color name="accent_dark">#FFFFB300</color>
+
+    <color name="bottom_nav_selected">#FFFFC107</color>
+    <color name="bottom_nav_unselected">#FF9E9E9E</color>
+    <color name="bottom_nav_background">#FF1A1A1A</color>
+
+    <color name="banner_overlay">#80000000</color>
 </resources>

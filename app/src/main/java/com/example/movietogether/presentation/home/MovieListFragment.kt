@@ -64,13 +64,18 @@ class MovieListFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                binding.progressBar.visibility = View.VISIBLE
                 val movies = when (type) {
                     TYPE_TOP250 -> repository.getTop250()
                     else -> repository.getPopularMovies()
                 }
                 adapter.submitList(movies)
+                if (movies.isEmpty()) {
+                    Toast.makeText(requireContext(), "The list is empty", Toast.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                e.printStackTrace()
             } finally {
                 binding.progressBar.visibility = View.GONE
             }

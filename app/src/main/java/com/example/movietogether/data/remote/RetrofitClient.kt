@@ -1,6 +1,8 @@
 package com.example.movietogether.data.remote
 
+import com.example.movietogether.data.remote.api.CollectionApi
 import com.example.movietogether.data.remote.api.MovieApi
+import com.example.movietogether.data.remote.api.RoomApi
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -24,4 +26,6 @@ object RetrofitClient {
         .build()
 
     val movieApi: MovieApi = retrofit.create(MovieApi::class.java)
+    val collectionApi: CollectionApi = retrofit.create(CollectionApi::class.java)
+    val roomApi: RoomApi = retrofit.create(RoomApi::class.java)
 }

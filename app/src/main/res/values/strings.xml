@@ -1,3 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">MovieTogether</string>
+
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_my_list">My list</string>
+    <string name="nav_profile">Profile</string>
+    <string name="home_featured">Featured</string>
+    <string name="home_popular">Popular</string>
+    <string name="home_top_250">Top 250</string>
+    <string name="home_see_more">See more</string>
+    <string name="home_watch">Watch</string>
+    <string name="home_details">Details</string>
+    <string name="error_loading">Loading error: %1$s</string>
+    <string name="list_empty">List is empty</string>
+    <string name="rating_format">★ %1$s</string>
+    <string name="movie_year">Year: %1$s</string>
+    <string name="movie_rating">Rating: %1$s</string>
+    <string name="movie_watch">Watch trailer</string>
+    <string name="movie_no_trailer">Trailer unavailable</string>
+    <string name="movie_add_to_list">Add to list</string>
+    <string name="movie_overview">Overview</string>
+    <string name="player_error">Playback error</string>
+    <string name="search_hint">Search movies…</string>
+    <string name="search_empty">Nothing found</string>
+    <string name="search_query_too_short">Enter at least 2 characters</string>
+    <string name="collections_title">My list</string>
+    <string name="collections_empty">No collections yet</string>
+    <string name="collections_create">Create</string>
+    <string name="collections_name_hint">Collection name</string>
+    <string name="collections_movies_count">%1$d movies</string>
+    <string name="movie_added_to_list">Added to list</string>
+    <string name="create_room">Create room</string>
+    <string name="join_room">Join room</string>
+    <string name="room_code_hint">Room code</string>
+    <string name="watch_together">Watch together</string>
+    <string name="room_created">Room: %1$s</string>
+    <string name="room_share">Join my room: %1$s</string>
+
 </resources>
