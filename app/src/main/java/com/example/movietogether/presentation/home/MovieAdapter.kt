@@ -2,53 +2,68 @@ package com.example.movietogether.presentation.home
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.annotation.LayoutRes
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.example.movietogether.R
 import com.example.movietogether.data.remote.dto.KinopoiskMovieDto
 import com.example.movietogether.databinding.ItemMovieBinding
+import com.example.movietogether.databinding.ItemMovieGridBinding
 
 class MovieAdapter(
+    @LayoutRes private val layoutRes: Int = R.layout.item_movie,
     private val onClick: (KinopoiskMovieDto) -> Unit
-) : RecyclerView.Adapter<MovieAdapter.MovieViewHolder>() {
+) : ListAdapter<KinopoiskMovieDto, RecyclerView.ViewHolder>(Diff) {
 
-    private val items = mutableListOf<KinopoiskMovieDto>()
-
-    fun submitList(list: List<KinopoiskMovieDto>) {
-        items.clear()
-        items.addAll(list)
-        notifyDataSetChanged()
+    object Diff : DiffUtil.ItemCallback<KinopoiskMovieDto>() {
+        override fun areItemsTheSame(a: KinopoiskMovieDto, b: KinopoiskMovieDto) = a.id == b.id
+        override fun areContentsTheSame(a: KinopoiskMovieDto, b: KinopoiskMovieDto) = a == b
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MovieViewHolder {
-        val binding = ItemMovieBinding.inflate(
-            LayoutInflater.from(parent.context), parent, false
-        )
-        return MovieViewHolder(binding)
+    override fun getItemViewType(position: Int): Int = layoutRes
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        return if (viewType == R.layout.item_movie_grid) {
+            GridVH(ItemMovieGridBinding.inflate(inflater, parent, false))
+        } else {
+            DefaultVH(ItemMovieBinding.inflate(inflater, parent, false))
+        }
     }
 
-    override fun onBindViewHolder(holder: MovieViewHolder, position: Int) {
-        holder.bind(items[position])
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val movie = getItem(position)
+        when (holder) {
+            is GridVH -> holder.bind(movie, onClick)
+            is DefaultVH -> holder.bind(movie, onClick)
+        }
     }
 
-    override fun getItemCount(): Int = items.size
-
-    inner class MovieViewHolder(
-        private val binding: ItemMovieBinding
-    ) : RecyclerView.ViewHolder(binding.root) {
-
-        fun bind(movie: KinopoiskMovieDto) {
+    class DefaultVH(private val binding: ItemMovieBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+        fun bind(movie: KinopoiskMovieDto, onClick: (KinopoiskMovieDto) -> Unit) {
             binding.tvTitle.text = movie.title
-            binding.tvYear.text = movie.year?.toString() ?: "—"
-            binding.tvRating.text = "★ ${movie.rating ?: "—"}"
-
-            Glide.with(binding.root)
+            binding.tvRating.text = movie.rating?.let { "★ $it" } ?: ""
+            Glide.with(binding.root.context)
                 .load(movie.posterUrl)
                 .centerCrop()
                 .into(binding.ivPoster)
+            binding.root.setOnClickListener { onClick(movie) }
+        }
+    }
 
-            binding.root.setOnClickListener {
-                onClick(movie)
-            }
+    class GridVH(private val binding: ItemMovieGridBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+        fun bind(movie: KinopoiskMovieDto, onClick: (KinopoiskMovieDto) -> Unit) {
+            binding.tvTitle.text = movie.title
+            binding.tvRating.text = movie.rating?.let { "★ $it" } ?: ""
+            Glide.with(binding.root.context)
+                .load(movie.posterUrl)
+                .centerCrop()
+                .into(binding.ivPoster)
+            binding.root.setOnClickListener { onClick(movie) }
         }
     }
 }
