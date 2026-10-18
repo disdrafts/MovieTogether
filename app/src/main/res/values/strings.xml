@@ -37,5 +37,32 @@
     <string name="watch_together">Watch together</string>
     <string name="room_created">Room: %1$s</string>
     <string name="room_share">Join my room: %1$s</string>
+    <string name="room_not_found">Room not found</string>
+    <string name="room_host">Host: %1$s</string>
+    <string name="room_open_player">Open player</string>
+    <string name="send">Send</string>
+    <string name="message">Message</string>
+    <string name="connecting">Connecting...</string>
+    <string name="login_title">Login</string>
+    <string name="register_title">Register</string>
+    <string name="hint_username">Username</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_password">Password</string>
+    <string name="action_login">Login</string>
+    <string name="action_register">Register</string>
+    <string name="go_to_register">Create account</string>
+    <string name="go_to_login">Already have an account?</string>
+    <string name="auth_error">Auth error: %1$s</string>
+    <string name="fill_all_fields">Fill all fields</string>
+    <string name="profile_title">Profile</string>
+    <string name="profile_username">Username: %1$s</string>
+    <string name="profile_email">Email: %1$s</string>
+    <string name="action_logout">Logout</string>
+    <string name="sign_in_to_continue_watching_together">Sign in to continue watching together</string>
+    <string name="create_an_account_to_save_lists_and_watch_together">Create an account to save lists and watch together</string>
+    <string name="tap_avatar_to_change">Tap avatar to change</string>
+    <string name="avatar">Avatar</string>
+    <string name="room_share_code">Share code</string>
+    <string name="room_code_label">Room code: %1$s</string>
 
 </resources>
