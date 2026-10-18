@@ -1,13 +1,16 @@
 package com.example.movietogether.data.remote.repository
 
-import com.example.movietogether.data.remote.RetrofitClient
+import com.example.movietogether.data.remote.api.CollectionApi
 import com.example.movietogether.data.remote.dto.AddMovieRequest
 import com.example.movietogether.data.remote.dto.CollectionDto
 import com.example.movietogether.data.remote.dto.CreateCollectionRequest
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class CollectionRepository {
-    private val api = RetrofitClient.collectionApi
-
+@Singleton
+class CollectionRepository @Inject constructor(
+    private val api: CollectionApi
+) {
     suspend fun getUserCollections(userId: Long): List<CollectionDto> {
         return api.getUserCollections(userId)
     }

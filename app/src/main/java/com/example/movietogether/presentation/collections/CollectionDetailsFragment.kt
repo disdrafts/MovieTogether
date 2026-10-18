@@ -7,13 +7,18 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.movietogether.R
-import com.example.movietogether.data.remote.repository.CollectionRepository
 import com.example.movietogether.databinding.FragmentCollectionDetailsBinding
+import com.example.movietogether.presentation.movie.MovieDetailsFragment
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class CollectionDetailsFragment : Fragment() {
 
     companion object {
@@ -22,18 +27,14 @@ class CollectionDetailsFragment : Fragment() {
 
         fun newInstance(id: Long, name: String): CollectionDetailsFragment {
             return CollectionDetailsFragment().apply {
-                arguments = bundleOf(
-                    ARG_ID to id,
-                    ARG_NAME to name
-                )
+                arguments = bundleOf(ARG_ID to id, ARG_NAME to name)
             }
         }
     }
 
     private var _binding: FragmentCollectionDetailsBinding? = null
     private val binding get() = _binding!!
-
-    private val repository = CollectionRepository()
+    private val viewModel: CollectionDetailsViewModel by viewModels()
     private lateinit var adapter: LocalMovieAdapter
 
     override fun onCreateView(
@@ -51,38 +52,42 @@ class CollectionDetailsFragment : Fragment() {
         val collectionId = arguments?.getLong(ARG_ID) ?: 0L
         val name = arguments?.getString(ARG_NAME).orEmpty()
 
-        binding.tvTitle.text = name
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
 
         adapter = LocalMovieAdapter { movie ->
-            Toast.makeText(requireContext(), movie.title, Toast.LENGTH_SHORT).show()
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, MovieDetailsFragment.newInstance(movie))
+                .addToBackStack(null)
+                .commit()
         }
 
         binding.rvMovies.layoutManager = GridLayoutManager(requireContext(), 3)
         binding.rvMovies.adapter = adapter
 
-        loadCollection(collectionId)
-    }
-
-    private fun loadCollection(id: Long) {
-        binding.progressBar.visibility = View.VISIBLE
+        viewModel.load(collectionId, name)
 
         viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val collection = repository.getCollection(id)
-                adapter.submitList(collection.movies)
-                binding.tvEmpty.visibility =
-                    if (collection.movies.isEmpty()) View.VISIBLE else View.GONE
-            } catch (e: Exception) {
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.error_loading, e.message ?: ""),
-                    Toast.LENGTH_LONG
-                ).show()
-            } finally {
-                binding.progressBar.visibility = View.GONE
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    when (state) {
+                        CollectionDetailsUiState.Loading -> {
+                            binding.progressBar.visibility = View.VISIBLE
+                        }
+                        is CollectionDetailsUiState.Success -> {
+                            binding.progressBar.visibility = View.GONE
+                            binding.tvTitle.text = state.name
+                            adapter.submitList(state.movies)
+                            binding.tvEmpty.visibility =
+                                if (state.movies.isEmpty()) View.VISIBLE else View.GONE
+                        }
+                        is CollectionDetailsUiState.Error -> {
+                            binding.progressBar.visibility = View.GONE
+                            Toast.makeText(requireContext(), state.message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
             }
         }
     }

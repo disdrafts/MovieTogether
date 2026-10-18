@@ -8,20 +8,22 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.movietogether.R
-import com.example.movietogether.data.Session
-import com.example.movietogether.data.remote.repository.CollectionRepository
 import com.example.movietogether.databinding.FragmentCollectionsBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class CollectionsFragment : Fragment() {
 
     private var _binding: FragmentCollectionsBinding? = null
     private val binding get() = _binding!!
-
-    private val repository = CollectionRepository()
+    private val viewModel: CollectionsViewModel by viewModels()
     private lateinit var adapter: CollectionAdapter
 
     override fun onCreateView(
@@ -49,37 +51,39 @@ class CollectionsFragment : Fragment() {
         binding.rvCollections.layoutManager = LinearLayoutManager(requireContext())
         binding.rvCollections.adapter = adapter
 
-        binding.fabCreate.setOnClickListener {
-            showCreateDialog()
-        }
-
-        loadCollections()
-    }
-    private fun loadCollections() {
-        binding.progressBar.visibility = View.VISIBLE
+        binding.fabCreate.setOnClickListener { showCreateDialog() }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val list = repository.getUserCollections(Session.userId)
-                adapter.submitList(list)
-                binding.tvEmpty.visibility =
-                    if (list.isEmpty()) View.VISIBLE else View.GONE
-            } catch (e: Exception) {
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.error_loading, e.message ?: ""),
-                    Toast.LENGTH_LONG
-                ).show()
-            } finally {
-                binding.progressBar.visibility = View.GONE
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    when (state) {
+                        CollectionsUiState.Loading -> {
+                            binding.progressBar.visibility = View.VISIBLE
+                        }
+                        is CollectionsUiState.Success -> {
+                            binding.progressBar.visibility = View.GONE
+                            adapter.submitList(state.collections)
+                            binding.tvEmpty.visibility =
+                                if (state.collections.isEmpty()) View.VISIBLE else View.GONE
+                        }
+                        is CollectionsUiState.Error -> {
+                            binding.progressBar.visibility = View.GONE
+                            Toast.makeText(requireContext(), state.message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.load()
+    }
+
     private fun showCreateDialog() {
         val input = EditText(requireContext()).apply {
             hint = getString(R.string.collections_name_hint)
-            setTextColor(resources.getColor(R.color.text_primary, null))
-            setHintTextColor(resources.getColor(R.color.text_secondary, null))
             setPadding(48, 32, 48, 32)
         }
 
@@ -87,28 +91,10 @@ class CollectionsFragment : Fragment() {
             .setTitle(R.string.collections_create)
             .setView(input)
             .setPositiveButton(R.string.collections_create) { _, _ ->
-                val name = input.text.toString().trim()
-                if (name.isNotEmpty()) {
-                    createCollection(name)
-                }
+                viewModel.createCollection(input.text.toString())
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
-    }
-
-    private fun createCollection(name: String) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                repository.createCollection(name, Session.userId)
-                loadCollections()
-            } catch (e: Exception) {
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.error_loading, e.message ?: ""),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        }
     }
 
     override fun onDestroyView() {

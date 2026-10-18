@@ -11,18 +11,21 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.bumptech.glide.Glide
 import com.example.movietogether.R
-import com.example.movietogether.data.Session
 import com.example.movietogether.data.remote.dto.KinopoiskMovieDto
 import com.example.movietogether.data.remote.dto.MovieDto
-import com.example.movietogether.data.remote.repository.CollectionRepository
-import com.example.movietogether.data.remote.repository.MovieRepository
-import com.example.movietogether.data.remote.repository.RoomRepository
-import kotlinx.coroutines.launch
 import com.example.movietogether.databinding.FragmentMovieDetailsBinding
+import com.example.movietogether.presentation.player.PlayerFragment
+import com.example.movietogether.presentation.watch.WatchRoomFragment
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class MovieDetailsFragment : Fragment() {
 
     companion object {
@@ -45,13 +48,24 @@ class MovieDetailsFragment : Fragment() {
                 )
             }
         }
+
+        fun newInstance(movie: MovieDto): MovieDetailsFragment {
+            return MovieDetailsFragment().apply {
+                arguments = bundleOf(
+                    ARG_ID to (movie.kinopoiskId ?: movie.id),
+                    ARG_TITLE to movie.title,
+                    ARG_OVERVIEW to movie.description,
+                    ARG_YEAR to movie.year,
+                    ARG_RATING to movie.rating,
+                    ARG_POSTER to movie.posterUrl
+                )
+            }
+        }
     }
 
     private var _binding: FragmentMovieDetailsBinding? = null
     private val binding get() = _binding!!
-
-    private val repository = MovieRepository()
-    private var localMovie: MovieDto? = null
+    private val viewModel: MovieDetailsViewModel by viewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -64,87 +78,121 @@ class MovieDetailsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.updatePadding(top = bars.top)
+            v.updatePadding(top = bars.top)
             insets
         }
 
-        val kinopoiskId = arguments?.getLong(ARG_ID) ?: 0L
-        val title = arguments?.getString(ARG_TITLE).orEmpty()
-        val overview = arguments?.getString(ARG_OVERVIEW)
-        val year = arguments?.getInt(ARG_YEAR)
-        val rating = arguments?.getDouble(ARG_RATING)
-        val poster = arguments?.getString(ARG_POSTER)
-
-        binding.tvTitle.text = title
-        binding.tvOverview.text = overview ?: "—"
-        binding.tvYear.text = getString(R.string.movie_year, year?.toString() ?: "—")
-        binding.tvRating.text = getString(
-            R.string.movie_rating,
-            rating?.toString() ?: "—"
+        viewModel.initFromArgs(
+            kinopoiskId = arguments?.getLong(ARG_ID) ?: 0L,
+            title = arguments?.getString(ARG_TITLE).orEmpty(),
+            overview = arguments?.getString(ARG_OVERVIEW),
+            year = arguments?.getInt(ARG_YEAR),
+            rating = arguments?.getDouble(ARG_RATING),
+            posterUrl = arguments?.getString(ARG_POSTER)
         )
-
-        Glide.with(this)
-            .load(poster)
-            .centerCrop()
-            .into(binding.ivPoster)
 
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
 
         binding.btnWatch.setOnClickListener {
-            val videoUrl = localMovie?.videoUrl
+            val videoUrl = viewModel.uiState.value.localMovie?.videoUrl
             if (videoUrl.isNullOrBlank()) {
                 Toast.makeText(requireContext(), R.string.movie_no_trailer, Toast.LENGTH_SHORT).show()
             } else {
                 parentFragmentManager.beginTransaction()
-                    .replace(
-                        R.id.fragmentContainer,
-                        com.example.movietogether.presentation.player.PlayerFragment.newInstance(videoUrl)
-                    )
+                    .replace(R.id.fragmentContainer, PlayerFragment.newInstance(videoUrl))
                     .addToBackStack(null)
                     .commit()
             }
         }
+
         binding.btnAddToList.setOnClickListener {
-            val localId = localMovie?.id
-            if (localId == null) {
-                Toast.makeText(requireContext(), "Movie is not on server", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            showChooseCollectionDialog(localId)
+            viewModel.onAddToListClick()
         }
 
         binding.btnWatchTogether.setOnClickListener {
-            val localId = localMovie?.id
-            if (localId == null) {
-                Toast.makeText(requireContext(), "Movie is not on server", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            createRoom(localId)
+            viewModel.createRoom()
         }
 
-        checkTrailer(kinopoiskId)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    bindArgs(state)
+                    bindTrailer(state)
+                    handleEvent(state.event)
+                }
+            }
+        }
     }
 
-    private fun checkTrailer(kinopoiskId: Long) {
-        binding.progressBar.visibility = View.VISIBLE
+    private fun bindArgs(state: MovieDetailsUiState) {
+        val args = state.args ?: return
+        binding.tvTitle.text = args.title
+        binding.tvOverview.text = args.overview ?: "—"
+        binding.tvYear.text = getString(R.string.movie_year, args.year?.toString() ?: "—")
+        binding.tvRating.text = getString(R.string.movie_rating, args.rating?.toString() ?: "—")
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                localMovie = repository.getByKinopoiskId(kinopoiskId)
-                val hasVideo = !localMovie?.videoUrl.isNullOrBlank()
-                binding.btnWatch.isEnabled = hasVideo
-                if (!hasVideo) {
-                    binding.btnWatch.text = getString(R.string.movie_no_trailer)
-                }
-            } catch (e: Exception) {
-                binding.btnWatch.isEnabled = false
-                binding.btnWatch.text = getString(R.string.movie_no_trailer)
-            } finally {
-                binding.progressBar.visibility = View.GONE
+        Glide.with(this)
+            .load(args.posterUrl)
+            .centerCrop()
+            .into(binding.ivPoster)
+    }
+
+    private fun bindTrailer(state: MovieDetailsUiState) {
+        binding.progressBar.visibility =
+            if (state.isLoadingTrailer) View.VISIBLE else View.GONE
+
+        binding.btnWatch.isEnabled = state.hasTrailer
+        binding.btnWatch.text = if (state.hasTrailer) {
+            getString(R.string.movie_watch)
+        } else {
+            getString(R.string.movie_no_trailer)
+        }
+    }
+
+    private fun handleEvent(event: MovieDetailsEvent) {
+        when (event) {
+            MovieDetailsEvent.Idle -> Unit
+
+            is MovieDetailsEvent.ShowCollections -> {
+                val names = event.collections.map { it.name }.toTypedArray()
+                AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.movie_add_to_list)
+                    .setItems(names) { _, which ->
+                        viewModel.addToCollection(event.collections[which].id, event.movieId)
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+                viewModel.consumeEvent()
+            }
+
+            is MovieDetailsEvent.RoomCreated -> {
+                viewModel.consumeEvent()
+                parentFragmentManager.beginTransaction()
+                    .replace(
+                        R.id.fragmentContainer,
+                        WatchRoomFragment.newInstance(
+                            event.room.roomId,
+                            event.room.movieId,
+                            event.room.hostUsername
+                        )
+                    )
+                    .addToBackStack(null)
+                    .commit()
+            }
+
+            is MovieDetailsEvent.Error -> {
+                Toast.makeText(requireContext(), event.message, Toast.LENGTH_LONG).show()
+                viewModel.consumeEvent()
+            }
+
+            is MovieDetailsEvent.Info -> {
+                Toast.makeText(requireContext(), event.message, Toast.LENGTH_SHORT).show()
+                viewModel.consumeEvent()
             }
         }
     }
@@ -152,70 +200,5 @@ class MovieDetailsFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    private fun showChooseCollectionDialog(movieId: Long) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val collections = CollectionRepository().getUserCollections(Session.userId)
-                if (collections.isEmpty()) {
-                    Toast.makeText(requireContext(), "Create a collection first", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-
-                val names = collections.map { it.name }.toTypedArray()
-
-                AlertDialog.Builder(requireContext())
-                    .setTitle(R.string.movie_add_to_list)
-                    .setItems(names) { _, which ->
-                        val selected = collections[which]
-                        addToCollection(selected.id, movieId)
-                    }
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show()
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), e.message ?: "Error", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    private fun addToCollection(collectionId: Long, movieId: Long) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                CollectionRepository().addMovieToCollection(collectionId, movieId)
-                Toast.makeText(requireContext(), R.string.movie_added_to_list, Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), e.message ?: "Error", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-    private fun createRoom(movieId: Long) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val room = RoomRepository().createRoom(
-                    movieId = movieId,
-                    hostUserId = Session.userId,
-                    hostUsername = Session.username
-                )
-
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.room_created, room.roomId),
-                    Toast.LENGTH_LONG
-                ).show()
-
-                val sendIntent = android.content.Intent().apply {
-                    action = android.content.Intent.ACTION_SEND
-                    putExtra(
-                        android.content.Intent.EXTRA_TEXT,
-                        getString(R.string.room_share, room.roomId)
-                    )
-                    type = "text/plain"
-                }
-                startActivity(android.content.Intent.createChooser(sendIntent, null))
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), e.message ?: "Error", Toast.LENGTH_LONG).show()
-            }
-        }
     }
 }
