@@ -1,13 +1,15 @@
 package com.example.movietogether.data.remote.repository
 
-import com.example.movietogether.data.remote.RetrofitClient
+import com.example.movietogether.data.remote.api.RoomApi
 import com.example.movietogether.data.remote.dto.CreateRoomRequest
 import com.example.movietogether.data.remote.dto.RoomDto
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class RoomRepository {
-
-    private val api = RetrofitClient.roomApi
-
+@Singleton
+class RoomRepository @Inject constructor(
+    private val api: RoomApi
+) {
     suspend fun createRoom(
         movieId: Long,
         hostUserId: Long,
