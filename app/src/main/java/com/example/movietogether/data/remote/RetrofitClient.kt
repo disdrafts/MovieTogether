@@ -1,5 +1,6 @@
 package com.example.movietogether.data.remote
 
+import com.example.movietogether.data.remote.api.AuthApi
 import com.example.movietogether.data.remote.api.CollectionApi
 import com.example.movietogether.data.remote.api.MovieApi
 import com.example.movietogether.data.remote.api.RoomApi
@@ -28,4 +29,5 @@ object RetrofitClient {
     val movieApi: MovieApi = retrofit.create(MovieApi::class.java)
     val collectionApi: CollectionApi = retrofit.create(CollectionApi::class.java)
     val roomApi: RoomApi = retrofit.create(RoomApi::class.java)
+    val authApi: AuthApi = retrofit.create(AuthApi::class.java)
 }
